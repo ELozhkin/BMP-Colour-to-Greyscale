@@ -1,1 +1,1 @@
-# JPG-Colour-to-Greyscale
+# BMP-Colour-to-Greyscale
