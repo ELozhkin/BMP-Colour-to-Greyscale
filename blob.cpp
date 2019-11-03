@@ -1,27 +1,84 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include "bmp.h"
+#include <string>
 
 using namespace std;
 
-int convertGrey(char* bmpPath);
-int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, unsigned char *data, int size);
+int searchDirectory(char* path);
+int isImg(char* path);
+int convertGrey(char* bmpPath, int count);
+int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, int num);
 
 int main(int argc, char** argv) {
 
-	int success = convertGrey(argv[1]);
+	int count = searchDirectory(argv[1]);
 
-	if (success == 0) {
-		printf("yAy\n");
-	} else {
-		printf("aw no\n");
+	if (count == 0) {
+		printf("Did not find any pngs in the specified directory.\n");
 	}
 
 	return 0;
 
 }
 
-int convertGrey(char* bmpPath) {
+
+int searchDirectory(char* path) {
+	int count = 0;
+
+	struct dirent *pathDirent;
+	DIR *dir = opendir(path); //dir contains a pointer to manage the directory
+	if (dir == NULL) {
+		printf("couldn't open %s\n", path);
+		return 1;
+	}
+
+	int numSkip= 2;
+
+	while((pathDirent = readdir(dir)) != NULL) {
+		if (numSkip > 0) {
+			numSkip--;
+			continue;
+		}
+
+		count++;
+
+		if (isImg(pathDirent->d_name) != 0) {
+			printf("%s is not a bmp. All files in the directory must be a .bmp file format\n", pathDirent->d_name);
+			return 1;
+		}
+
+		if (convertGrey(pathDirent->d_name, count) != 0) {
+			printf("Couldn't convert %s to greyscale.\n", pathDirent->d_name);
+		} else {
+			printf("Converted %s to greyscale.\n\t New file name: test%d.bmp\n", pathDirent->d_name, count);
+		}
+	}
+
+	closedir(dir);
+	return count;
+}
+
+int isImg(char* path) {
+	char correctBMP[16] = {0x42, 0x4D, 0x36, 0x00, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x28, 0x00};
+	char buffer[16];
+
+	FILE *fp = fopen(path, "r");
+	fseek(fp, 0, SEEK_SET);
+
+	fread(buffer, sizeof(char), 16, fp);
+	
+	for (int i = 0; i< 16; i++) {
+		if (buffer[i] != correctBMP[i]) {
+			printf( &buffer[i], correctBMP[i], i);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int convertGrey(char* bmpPath, int count) {
 
 	FILE* bmp = fopen(bmpPath, "r");
 	if (bmp == NULL) {
@@ -32,62 +89,55 @@ int convertGrey(char* bmpPath) {
 	fseek(bmp, 0, SEEK_SET);
 	BmpFileHeader fhead;
 	fread(&fhead, sizeof(fhead)-2, 1, bmp);
-	printf("%d\n", sizeof(fhead));
 
 	if(fhead.type != 0x4D42) {
 		printf("Error! Unrecognized file format.");
 		return 1;
 	}
 
-
 	fseek(bmp, 14, SEEK_SET);
 	BmoInfoHeader ihead;
 	fread(&ihead, sizeof(ihead), 1, bmp);
-
-	printf("bitcount %d\n", ihead.bitcount);
 	
 	int size = 3 * ihead.width * ihead.height;
-	unsigned char* data = new unsigned char[size]; //allocate 3 bytes per pixel according to size
+
+
+	rgbTriple* data2 = new rgbTriple[size/3];
 
 	fseek(bmp, 54, SEEK_SET);
-	fread(data, sizeof(unsigned char), size, bmp); //data should now contain the rgb values of the pixels 
-
-	for (int i = 0; i < size; i += 3) {
-		unsigned char tmp = data[i];
-		data[i+2] = data[i];
-		data[i] = tmp;
-
-		int B = data[i];
-		int G = data[i+1];
-		int R = data[i+2];
-
-		int scale =(0.3 * R) + (0.59 * G) + (0.11 * B); // weighted method from https://www.tutorialspoint.com/dip/grayscale_to_rgb_conversion.htm
-
-		data[i] = data[i+1] = data[i +2] = scale;
+	for (int i = 0; i < size/3; i++) {
+		fread(&data2[i], sizeof(unsigned char), 3, bmp);
 	}
 
-	for (int i = 0; i < size; i+=3) {
-		if(data[i] < 125) {
-			data[i] = data[i+1] = data[i +2] = 0;
+	for(int i =0; i < size/3; i++) {
+		int scale = (0.3 * data2[i].red) + (0.59 * data2[i].green) + (0.11 * data2[i].blue); // weighted method from https://www.tutorialspoint.com/dip/grayscale_to_rgb_conversion.htm
+		
+		if (scale < 110) {
+			data2[i].red = data2[i].green = data2[i].blue = 0;
 		} else {
-			data[i] = data[i+1] = data[i +2] = 500;
+			data2[i].red = data2[i].green = data2[i].blue = 500;
 		}
 	}
 
-	createNewBmp(fhead, ihead, data, size);
+	createNewBmp(fhead, ihead, data2, size, count);
 
-	printf("%d\n", ihead.bitcount);
-	printf("%d\n", ihead.coloursused);
-
-	delete[](data);
+	delete[](data2);
 	fclose(bmp);
 
 	return 0;
 }
 
-int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, unsigned char *data, int size) {
+int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, int num) {
 	//copy everything over to a new file
-	FILE* final = fopen("test.bmp", "w");
+	char filename[] = "test";
+
+	string n = to_string(num);
+	strcpy(&n[0], n.c_str());
+	
+	strcat(filename, &n[0]);
+	strcat(filename, ".bmp");
+
+	FILE* final = fopen(filename, "w");
 	if (final == NULL) {
 		printf("could not open .\n");
 		return 1;
