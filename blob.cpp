@@ -5,11 +5,11 @@
 using namespace std;
 
 int convertGrey(char* bmpPath);
-int convertGrey2(char* bmpPath);
+int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, unsigned char *data, int size);
 
 int main(int argc, char** argv) {
 
-	int success = convertGrey2(argv[1]);
+	int success = convertGrey(argv[1]);
 
 	if (success == 0) {
 		printf("yAy\n");
@@ -22,34 +22,6 @@ int main(int argc, char** argv) {
 }
 
 int convertGrey(char* bmpPath) {
-
-	FILE *bmp = fopen(bmpPath, "r");
-	if (bmp == NULL) {
-		printf("could not open %s.\n", bmpPath);
-		return 1;
-	}
-
-	FILE *final = fopen("test.bmp", "w");
-	if (final == NULL) {
-		printf("could not create test.bmp\n");
-		return 1;
-	}
-
-	BmpFileHeader fhead;
-	fread(&fhead, sizeof(fhead), 1, bmp);
-
-	BmoInfoHeader ihead;
-	fread(&ihead, sizeof(ihead), 1, bmp);
-
-
-
-	fclose(final);
-	fclose(bmp);
-
-	return 0;
-}
-
-int convertGrey2(char* bmpPath) {
 
 	FILE* bmp = fopen(bmpPath, "r");
 	if (bmp == NULL) {
@@ -71,6 +43,8 @@ int convertGrey2(char* bmpPath) {
 	fseek(bmp, 14, SEEK_SET);
 	BmoInfoHeader ihead;
 	fread(&ihead, sizeof(ihead), 1, bmp);
+
+	printf("bitcount %d\n", ihead.bitcount);
 	
 	int size = 3 * ihead.width * ihead.height;
 	unsigned char* data = new unsigned char[size]; //allocate 3 bytes per pixel according to size
@@ -83,23 +57,35 @@ int convertGrey2(char* bmpPath) {
 		data[i+2] = data[i];
 		data[i] = tmp;
 
-		int R = data[i];
+		int B = data[i];
 		int G = data[i+1];
-		int B = data[i+2];
+		int R = data[i+2];
 
-		int scale =(0.3 * R) + (0.59 * G) + (0.11 * B);
+		int scale =(0.3 * R) + (0.59 * G) + (0.11 * B); // weighted method from https://www.tutorialspoint.com/dip/grayscale_to_rgb_conversion.htm
 
 		data[i] = data[i+1] = data[i +2] = scale;
-
-		// i = r, i + 1 = g, i + 2 = b
-		// if (data[i] < 150) {
-		// 	data[i] = 0;
-		// } else {
-		// 	data[i] = 250;
-		// }
-
 	}
 
+	for (int i = 0; i < size; i+=3) {
+		if(data[i] < 125) {
+			data[i] = data[i+1] = data[i +2] = 0;
+		} else {
+			data[i] = data[i+1] = data[i +2] = 500;
+		}
+	}
+
+	createNewBmp(fhead, ihead, data, size);
+
+	printf("%d\n", ihead.bitcount);
+	printf("%d\n", ihead.coloursused);
+
+	delete[](data);
+	fclose(bmp);
+
+	return 0;
+}
+
+int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, unsigned char *data, int size) {
 	//copy everything over to a new file
 	FILE* final = fopen("test.bmp", "w");
 	if (final == NULL) {
@@ -112,13 +98,7 @@ int convertGrey2(char* bmpPath) {
 	fwrite(&ihead, sizeof(ihead), 1, final);
 	fwrite(data, size, 1, final);
 
-
-	printf("%d\n", ihead.bitcount);
-	printf("%d\n", ihead.coloursused);
-
-	delete[](data);
-	fclose(bmp);
 	fclose(final);
-
+	
 	return 0;
 }
