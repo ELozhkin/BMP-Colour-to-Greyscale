@@ -19,11 +19,14 @@ int main(int argc, char** argv) {
 		printf("Did not find any pngs in the specified directory.\n");
 	}
 
+	printf("Created %d new bmp files.\n", count);
 	return 0;
-
 }
 
-
+// searchDirectory searches through the directory specified by the user. Returns error if directory is equal 
+// to NULL. Returns the number of converted bmp files.
+// Skip first two entries in the directory. Returns if any files in the directory are not bmp files (ie this 
+// script should only be used for 'bmp folders').
 int searchDirectory(char* path) {
 	int count = 0;
 
@@ -34,14 +37,13 @@ int searchDirectory(char* path) {
 		return 1;
 	}
 
-	int numSkip= 2;
+	int numSkip = 2;
 
 	while((pathDirent = readdir(dir)) != NULL) {
 		if (numSkip > 0) {
 			numSkip--;
 			continue;
 		}
-
 		count++;
 
 		if (isImg(pathDirent->d_name) != 0) {
@@ -75,6 +77,8 @@ int isImg(char* path) {
 			return 1;
 		}
 	}
+
+	fclose(fp);
 	return 0;
 }
 
@@ -100,7 +104,6 @@ int convertGrey(char* bmpPath, int count) {
 	fread(&ihead, sizeof(ihead), 1, bmp);
 	
 	int size = 3 * ihead.width * ihead.height;
-
 
 	rgbTriple* data2 = new rgbTriple[size/3];
 
@@ -149,6 +152,5 @@ int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int 
 	fwrite(data, size, 1, final);
 
 	fclose(final);
-	
 	return 0;
 }
