@@ -9,7 +9,9 @@ using namespace std;
 int searchDirectory(char* path);
 int isImg(char* path);
 int convertGrey(char* bmpPath, int count);
-int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, int num);
+int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, char* name);
+
+int test(char* name);
 
 int main(int argc, char** argv) {
 
@@ -20,6 +22,19 @@ int main(int argc, char** argv) {
 	}
 
 	printf("Created %d new bmp files.\n", count);
+	return 0;
+}
+
+int test(char* name) {
+	// char filename[] = "test";
+
+	char* name2 = strtok(name, ".");
+	// string n = to_string(num);
+	// strcpy(&n[0], n.c_str());
+	
+	// strcat(filename, &n[0]);
+	strcat(name2, "-greyscale.bmp");
+	printf("%s\n", name2);
 	return 0;
 }
 
@@ -54,7 +69,7 @@ int searchDirectory(char* path) {
 		if (convertGrey(pathDirent->d_name, count) != 0) {
 			printf("Couldn't convert %s to greyscale.\n", pathDirent->d_name);
 		} else {
-			printf("Converted %s to greyscale.\n\t New file name: test%d.bmp\n", pathDirent->d_name, count);
+			printf("Converted %s to greyscale.\n\t New file name: %s\n", pathDirent->d_name, pathDirent->d_name);
 		}
 	}
 
@@ -67,6 +82,10 @@ int isImg(char* path) {
 	char buffer[16];
 
 	FILE *fp = fopen(path, "r");
+	if (fp == NULL) {
+		printf("could not open %s.\n", path);
+		return 1;
+	}
 	fseek(fp, 0, SEEK_SET);
 
 	fread(buffer, sizeof(char), 16, fp);
@@ -122,7 +141,7 @@ int convertGrey(char* bmpPath, int count) {
 		}
 	}
 
-	createNewBmp(fhead, ihead, data2, size, count);
+	createNewBmp(fhead, ihead, data2, size, bmpPath);
 
 	delete[](data2);
 	fclose(bmp);
@@ -130,17 +149,14 @@ int convertGrey(char* bmpPath, int count) {
 	return 0;
 }
 
-int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, int num) {
+int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, char* filename) {
 	//copy everything over to a new file
-	char filename[] = "test";
 
-	string n = to_string(num);
-	strcpy(&n[0], n.c_str());
-	
-	strcat(filename, &n[0]);
-	strcat(filename, ".bmp");
+	char* name = strtok(filename, ".");
 
-	FILE* final = fopen(filename, "w");
+	strcat(name, "-greyscale.bmp");
+
+	FILE* final = fopen(name, "w");
 	if (final == NULL) {
 		printf("could not open .\n");
 		return 1;
