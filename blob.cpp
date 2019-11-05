@@ -11,8 +11,6 @@ int isImg(char* path);
 int convertGrey(char* bmpPath, int count);
 int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, char* name);
 
-int test(char* name);
-
 int main(int argc, char** argv) {
 
 	int count = searchDirectory(argv[1]);
@@ -22,19 +20,6 @@ int main(int argc, char** argv) {
 	}
 
 	printf("Created %d new bmp files.\n", count);
-	return 0;
-}
-
-int test(char* name) {
-	// char filename[] = "test";
-
-	char* name2 = strtok(name, ".");
-	// string n = to_string(num);
-	// strcpy(&n[0], n.c_str());
-	
-	// strcat(filename, &n[0]);
-	strcat(name2, "-greyscale.bmp");
-	printf("%s\n", name2);
 	return 0;
 }
 
