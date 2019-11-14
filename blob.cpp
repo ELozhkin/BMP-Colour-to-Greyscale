@@ -15,8 +15,8 @@ int main(int argc, char** argv) {
 
 	int count = searchDirectory(argv[1]);
 
-	if (count == 0) {
-		printf("Did not find any pngs in the specified directory.\n");
+	if (count <= 0) {
+		printf("Did not find any bmps in the specified directory.\n");
 	}
 
 	printf("Created %d new bmp files.\n", count);
@@ -33,27 +33,29 @@ int searchDirectory(char* path) {
 	struct dirent *pathDirent;
 	DIR *dir = opendir(path); //dir contains a pointer to manage the directory
 	if (dir == NULL) {
-		printf("couldn't open %s\n", path);
-		return 1;
+		printf("couldn't open path %s\n", path);
+		return -1;
 	}
 
-	int numSkip = 2;
+	int numSkip = 2; //switch to 3 if we ever encounter a fail on .ds_store
 
 	while((pathDirent = readdir(dir)) != NULL) {
 		if (numSkip > 0) {
 			numSkip--;
 			continue;
 		}
-		count++;
-
-		if (isImg(pathDirent->d_name) != 0) {
-			printf("%s is not a bmp. All files in the directory must be a .bmp file format\n", pathDirent->d_name);
-			return 1;
+		if (pathDirent->d_name == ".DS_store") {
+			continue;
 		}
 
+		// if (isImg(pathDirent->d_name) != 0) {
+		// 	printf("%s is not a bmp. All files in the directory must be a .bmp file format\n", pathDirent->d_name);
+		// 	return -1;
+		// }
 		if (convertGrey(pathDirent->d_name, count) != 0) {
 			printf("Couldn't convert %s to greyscale.\n", pathDirent->d_name);
 		} else {
+			count++;
 			printf("Converted %s to greyscale.\n\t New file name: %s\n", pathDirent->d_name, pathDirent->d_name);
 		}
 	}
@@ -64,9 +66,10 @@ int searchDirectory(char* path) {
 
 int isImg(char* path) {
 	char correctBMP[16] = {0x42, 0x4D, 0x36, 0x00, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x28, 0x00};
+
 	char buffer[16];
 
-	FILE *fp = fopen(path, "r");
+	FILE *fp = 	fopen(path, "r");
 	if (fp == NULL) {
 		printf("could not open %s.\n", path);
 		return 1;
@@ -77,6 +80,7 @@ int isImg(char* path) {
 	
 	for (int i = 0; i< 16; i++) {
 		if (buffer[i] != correctBMP[i]) {
+			printf("failing here");
 			printf( &buffer[i], correctBMP[i], i);
 			return 1;
 		}
@@ -87,8 +91,13 @@ int isImg(char* path) {
 }
 
 int convertGrey(char* bmpPath, int count) {
+	char* path = "./imgs/";
+	char target[strlen(path) + strlen(bmpPath) + 1];
+	
+	strcpy(target, path);
+	strcat(target, bmpPath);
 
-	FILE* bmp = fopen(bmpPath, "r");
+	FILE* bmp = fopen(target, "r");
 	if (bmp == NULL) {
 		printf("could not open %s.\n", bmpPath);
 		return 1;
