@@ -52,6 +52,7 @@ int searchDirectory(char* path) {
 		// 	printf("%s is not a bmp. All files in the directory must be a .bmp file format\n", pathDirent->d_name);
 		// 	return -1;
 		// }
+
 		if (convertGrey(pathDirent->d_name, count) != 0) {
 			printf("Couldn't convert %s to greyscale.\n", pathDirent->d_name);
 		} else {
@@ -91,7 +92,7 @@ int isImg(char* path) {
 }
 
 int convertGrey(char* bmpPath, int count) {
-	char* path = "./imgs/";
+	char* path = "./imgs2/";
 	char target[strlen(path) + strlen(bmpPath) + 1];
 	
 	strcpy(target, path);
@@ -117,8 +118,11 @@ int convertGrey(char* bmpPath, int count) {
 	fread(&ihead, sizeof(ihead), 1, bmp);
 	
 	int size = 3 * ihead.width * ihead.height;
+	if (size < 0) {
+		size *= -1;
+	}
 
-	rgbTriple* data2 = new rgbTriple[size/3];
+	rgbTriple* data2 = new rgbTriple[size/3]; //BAD ALLOC HERE?!?!?!?
 
 	fseek(bmp, 54, SEEK_SET);
 	for (int i = 0; i < size/3; i++) {
@@ -145,8 +149,7 @@ int convertGrey(char* bmpPath, int count) {
 
 int createNewBmp(BmpFileHeader fhead, BmoInfoHeader ihead, rgbTriple *data, int size, char* filename) {
 	//copy everything over to a new file
-
-	char* name = strtok(filename, ".");
+	char* name = strtok(filename, "b");
 
 	strcat(name, "-greyscale.bmp");
 
